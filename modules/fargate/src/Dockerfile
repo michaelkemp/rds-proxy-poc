@@ -5,6 +5,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 RUN npm i express
+RUN npm i pg
 
 RUN npm ci --only=production
 

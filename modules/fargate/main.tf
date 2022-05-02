@@ -130,9 +130,8 @@ resource "aws_ecs_task_definition" "kempy-fargate-task" {
 }
 
 resource "aws_iam_role" "kempy-fargate-execution-role" {
-  name                 = "kempy-fargate-execution-role-${var.region}"
-  permissions_boundary = var.permissions_boundary
-  assume_role_policy   = <<-EOF
+  name               = "kempy-fargate-execution-role-${var.region}"
+  assume_role_policy = <<-EOF
     {
         "Version": "2012-10-17",
         "Statement": [{
@@ -181,9 +180,8 @@ resource "aws_iam_role_policy_attachment" "kempy-fargate-execution-policy" {
 }
 
 resource "aws_iam_role" "kempy-fargate-task-role" {
-  name                 = "kempy-fargate-task-role-${var.region}"
-  permissions_boundary = var.permissions_boundary
-  assume_role_policy   = <<-EOF
+  name               = "kempy-fargate-task-role-${var.region}"
+  assume_role_policy = <<-EOF
     {
         "Version": "2012-10-17",
         "Statement": [{
@@ -243,6 +241,16 @@ resource "aws_security_group" "kempy-fargate-sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_security_group_rule" "allow_rds" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.kempy-fargate-sg.id
+  description              = "Access from Fargate Security Group"
+  security_group_id        = var.rds_security_group
 }
 
 ############## ALB ##############

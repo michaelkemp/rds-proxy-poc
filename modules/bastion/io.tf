@@ -13,3 +13,7 @@ variable "subnet_ids" {
 variable "ec2_name" {
   type = string
 }
+
+variable "testdb_pwd" {
+  type = string
+}

@@ -41,7 +41,6 @@ variable "desired_count" {
   default = 2
 }
 
-variable "permissions_boundary" {
-  type    = string
-  default = ""
+variable "rds_security_group" {
+  type = string
 }

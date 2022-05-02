@@ -85,3 +85,6 @@ resource "aws_cloudwatch_log_group" "log-group" {
 output "psqlEndpoint" {
   value = aws_db_instance.rds.address
 }
+output "rdsSecurityGroup" {
+  value = aws_security_group.rds-security-group.id
+}
