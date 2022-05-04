@@ -1,16 +1,10 @@
-FROM node:17-alpine
+FROM python:3.8-slim-buster
 
-WORKDIR /usr/src/app
+EXPOSE 80
+WORKDIR /app
+COPY . /app
 
-COPY package*.json ./
+# RUN pip install -r requirements.txt
 
-RUN npm i express
-RUN npm i pg
 
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 8080
-
-CMD [ "node", "index.js" ]
+CMD ["python", "main.py"]

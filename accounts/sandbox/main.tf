@@ -111,55 +111,55 @@ resource "aws_ssm_parameter" "DBPASS" {
 }
 
 
-resource "aws_ecr_repository" "fargate-oregon" {
-  provider             = aws.us-west-2
-  name                 = "kempy-fargate-repo-us-west-2"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
+# resource "aws_ecr_repository" "fargate-oregon" {
+#   provider             = aws.us-west-2
+#   name                 = "kempy-fargate-repo-us-west-2"
+#   image_tag_mutability = "MUTABLE"
+#   image_scanning_configuration {
+#     scan_on_push = true
+#   }
+# }
 
-# MAKE SURE DOCKER is RUNNING: sudo service docker start
-resource "null_resource" "upload-docker" {
-  triggers = {
-    run = timestamp()
-  }
-  provisioner "local-exec" {
-    command = "../../modules/fargate/upload.sh"
-  }
-}
+# # MAKE SURE DOCKER is RUNNING: sudo service docker start
+# resource "null_resource" "upload-docker" {
+#   triggers = {
+#     run = timestamp()
+#   }
+#   provisioner "local-exec" {
+#     command = "../../modules/fargate/upload.sh"
+#   }
+# }
 
-# Roll ECS
-# aws ecs update-service --service kempy-fargate-ecs-us-west-2 --cluster kempy-fargate-us-west-2 --force-new-deployment --region us-west-2 --profile sandbox
+# # Roll ECS
+# # aws ecs update-service --service kempy-fargate-ecs-us-west-2 --cluster kempy-fargate-us-west-2 --force-new-deployment --region us-west-2 --profile sandbox
 
-# == The ECR must exist and an image must be uploaded [set count to 1 once image is in ECR]
-module "fargate-oregon" {
-  count  = 1
-  source = "../../modules/fargate"
-  providers = {
-    aws.region = aws.us-west-2
-  }
-  region             = "us-west-2"
-  repo               = aws_ecr_repository.fargate-oregon.name
-  account_id         = var.account_id
-  public_subnet_ids  = tolist(data.aws_subnets.public_oregon.ids)
-  private_subnet_ids = tolist(data.aws_subnets.private_oregon.ids)
-  vpc_id             = data.aws_vpc.vpc_oregon.id
-  cidr_blocks        = [data.aws_vpc.vpc_oregon.cidr_block]
-  rds_security_group = module.rds-oregon.rdsSecurityGroup
+# # == The ECR must exist and an image must be uploaded [set count to 1 once image is in ECR]
+# module "fargate-oregon" {
+#   count  = 1
+#   source = "../../modules/fargate"
+#   providers = {
+#     aws.region = aws.us-west-2
+#   }
+#   region             = "us-west-2"
+#   repo               = aws_ecr_repository.fargate-oregon.name
+#   account_id         = var.account_id
+#   public_subnet_ids  = tolist(data.aws_subnets.public_oregon.ids)
+#   private_subnet_ids = tolist(data.aws_subnets.private_oregon.ids)
+#   vpc_id             = data.aws_vpc.vpc_oregon.id
+#   cidr_blocks        = [data.aws_vpc.vpc_oregon.cidr_block]
+#   rds_security_group = module.rds-oregon.rdsSecurityGroup
 
-  container_secrets = {
-    DBHOST = aws_ssm_parameter.DBHOST.arn
-    DBNAME = aws_ssm_parameter.DBNAME.arn
-    DBUSER = aws_ssm_parameter.DBUSER.arn
-    DBPASS = aws_ssm_parameter.DBPASS.arn
-  }
+#   container_secrets = {
+#     DBHOST = aws_ssm_parameter.DBHOST.arn
+#     DBNAME = aws_ssm_parameter.DBNAME.arn
+#     DBUSER = aws_ssm_parameter.DBUSER.arn
+#     DBPASS = aws_ssm_parameter.DBPASS.arn
+#   }
 
-  ulimits = [
-    { "name" = "nofile", "softLimit" = "1024", "hardLimit" = "4096" },
-    { "name" = "core", "softLimit" = "1", "hardLimit" = "1" }
-  ]
+#   ulimits = [
+#     { "name" = "nofile", "softLimit" = "1024", "hardLimit" = "4096" },
+#     { "name" = "core", "softLimit" = "1", "hardLimit" = "1" }
+#   ]
 
-  desired_count = 1
-}
+#   desired_count = 1
+# }
