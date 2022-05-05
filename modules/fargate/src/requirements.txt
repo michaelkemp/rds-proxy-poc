@@ -1,5 +1,2 @@
-boto3==1.7.9
-botocore==1.10.9
-requests==2.25.1
-requests-aws4auth==1.0.0
-ldap3==2.9
+psycopg2-binary==2.9.3
+names==0.3.0

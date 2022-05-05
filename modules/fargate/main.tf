@@ -46,30 +46,76 @@ resource "aws_ecs_cluster" "kempy-fargate-cluster" {
   name     = "kempy-fargate-${var.region}"
 }
 
-resource "aws_ecs_service" "kempy-fargate-ecs" {
-  provider             = aws.region
-  name                 = "kempy-fargate-ecs-${var.region}"
-  cluster              = aws_ecs_cluster.kempy-fargate-cluster.id
-  task_definition      = aws_ecs_task_definition.kempy-fargate-task.arn
-  desired_count        = var.desired_count
-  launch_type          = "FARGATE"
-  force_new_deployment = true
+# resource "aws_ecs_service" "kempy-fargate-ecs" {
+#   provider             = aws.region
+#   name                 = "kempy-fargate-ecs-${var.region}"
+#   cluster              = aws_ecs_cluster.kempy-fargate-cluster.id
+#   task_definition      = aws_ecs_task_definition.kempy-fargate-task.arn
+#   desired_count        = var.desired_count
+#   launch_type          = "FARGATE"
+#   force_new_deployment = true
 
-  network_configuration {
-    assign_public_ip = false
-    security_groups  = [aws_security_group.kempy-fargate-sg.id]
-    subnets          = tolist(var.private_subnet_ids)
-  }
+#   network_configuration {
+#     assign_public_ip = false
+#     security_groups  = [aws_security_group.kempy-fargate-sg.id]
+#     subnets          = tolist(var.private_subnet_ids)
+#   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.kempy-fargate-targetgroup.arn
-    container_name   = "kempy-fargate-${var.region}"
-    container_port   = "8080"
+# }
+
+resource "aws_cloudwatch_event_rule" "scheduled_task" {
+  name                = "kempy-fargate-scheduled-task"
+  description         = "Run task at a scheduled time"
+  schedule_expression = "cron(*/1 * * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "scheduled_task" {
+  target_id = "kempy-fargate-scheduled-task-target"
+  rule      = aws_cloudwatch_event_rule.scheduled_task.name
+  arn       = aws_ecs_cluster.kempy-fargate-cluster.arn
+  role_arn  = aws_iam_role.kempy-ecsEventsRole.arn
+
+  ecs_target {
+    task_count          = var.desired_count
+    task_definition_arn = aws_ecs_task_definition.kempy-fargate-task.arn
+    launch_type         = "FARGATE"
+    platform_version    = "LATEST"
+    network_configuration {
+      assign_public_ip = false
+      security_groups  = [aws_security_group.kempy-fargate-sg.id]
+      subnets          = tolist(var.private_subnet_ids)
+    }
   }
 }
 
+resource "aws_iam_role" "kempy-ecsEventsRole" {
+  name               = "kempy-ecsEventsRole"
+  assume_role_policy = <<-EOF
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "events.amazonaws.com"
+          },
+          "Action": "sts:AssumeRole"
+        }
+      ]
+    }
+  EOF
+}
+
+resource "aws_iam_role_policy_attachment" "kempy-ecsEventsRole-policy" {
+  role       = aws_iam_role.kempy-ecsEventsRole.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+}
+
+
 resource "aws_cloudwatch_log_group" "kempy-fargate-cloudwatch" {
   provider = aws.region
+  retention_in_days = 7
   name     = "/ecs/kempy-fargate-ecs-${var.region}"
 }
 
