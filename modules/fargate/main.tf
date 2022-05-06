@@ -46,27 +46,10 @@ resource "aws_ecs_cluster" "kempy-fargate-cluster" {
   name     = "kempy-fargate-${var.region}"
 }
 
-# resource "aws_ecs_service" "kempy-fargate-ecs" {
-#   provider             = aws.region
-#   name                 = "kempy-fargate-ecs-${var.region}"
-#   cluster              = aws_ecs_cluster.kempy-fargate-cluster.id
-#   task_definition      = aws_ecs_task_definition.kempy-fargate-task.arn
-#   desired_count        = var.desired_count
-#   launch_type          = "FARGATE"
-#   force_new_deployment = true
-
-#   network_configuration {
-#     assign_public_ip = false
-#     security_groups  = [aws_security_group.kempy-fargate-sg.id]
-#     subnets          = tolist(var.private_subnet_ids)
-#   }
-
-# }
-
 resource "aws_cloudwatch_event_rule" "scheduled_task" {
   name                = "kempy-fargate-scheduled-task"
   description         = "Run task at a scheduled time"
-  schedule_expression = "cron(*/1 * * * ? *)"
+  schedule_expression = var.schedule
 }
 
 resource "aws_cloudwatch_event_target" "scheduled_task" {
@@ -114,9 +97,9 @@ resource "aws_iam_role_policy_attachment" "kempy-ecsEventsRole-policy" {
 
 
 resource "aws_cloudwatch_log_group" "kempy-fargate-cloudwatch" {
-  provider = aws.region
+  provider          = aws.region
   retention_in_days = 7
-  name     = "/ecs/kempy-fargate-ecs-${var.region}"
+  name              = "/ecs/kempy-fargate-ecs-${var.region}"
 }
 
 locals {

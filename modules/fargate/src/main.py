@@ -2,39 +2,69 @@ import os
 import psycopg2
 import random
 import names
+import time
 
-DBHOST = os.environ['DBHOST']
-DBPORT = "5432"
-DBNAME = os.environ['DBNAME']
-DBUSER = os.environ['DBUSER']
-DBPASS = os.environ['DBPASS']
+TOTAL = 50
 
-def insertTable(person):
+try:
+    DBHOST = os.environ['DBHOST']
+    DBPORT = "5432"
+    DBNAME = os.environ['DBNAME']
+    DBUSER = os.environ['DBUSER']
+    DBPASS = os.environ['DBPASS']
+except:
+    DBHOST = "127.0.0.1"
+    DBPORT = "15432"
+    DBNAME = "testdb"
+    DBUSER = "testuser"
+    DBPASS = "bGkaWq8ycveAg3vF"
+
+def insertTable():
+    conn = []
     try:
-        connection = psycopg2.connect(user = DBUSER, password = DBPASS, host = DBHOST, port = DBPORT, database = DBNAME)
+        for i in range(TOTAL):
+            conn.append(psycopg2.connect(user = DBUSER, password = DBPASS, host = DBHOST, port = DBPORT, database = DBNAME))
+            print(".",end="",flush=True)
     except Exception as e:
         print("Connection Error: ", e)
         return
 
     try:    
-        cursor = connection.cursor()
-        postgres_insert_query = "INSERT INTO people (fullname, gender, phone, age) VALUES (%s,%s,%s,%s) RETURNING id"
-        record_to_insert = (person["fullname"], person["gender"], person["phone"], person["age"])
-        cursor.execute(postgres_insert_query, record_to_insert)
-        id = cursor.fetchone()[0]
-        connection.commit()
-        count = cursor.rowcount
-        print("Inserted ID: {} ".format(id))
-        print(count, "Record inserted successfully into people table")
+        numbers = ["0","1","2","3","4","5","6","7","8","9"]
+        mf = ["M","F"]
+
+        # INSERTS
+        for i in range(TOTAL):
+            gender = random.choice(mf)
+            if gender == "F":
+                fullname = names.get_full_name(gender='female')
+            else:
+                fullname = names.get_full_name(gender='male')
+
+            phone = ''.join(random.choice(numbers) for x in range(10))
+            age = random.randint(15, 98)
+
+            person = {"fullname": fullname, "gender": gender, "phone": phone, "age": age }
+
+            cursor = conn[i].cursor()
+            postgres_insert_query = "INSERT INTO people (fullname, gender, phone, age) VALUES (%s,%s,%s,%s) RETURNING id"
+            record_to_insert = (person["fullname"], person["gender"], person["phone"], person["age"])
+            cursor.execute(postgres_insert_query, record_to_insert)
+            id = cursor.fetchone()[0]
+            conn[i].commit()
+            count = cursor.rowcount
+            print("Inserted ID: {} ".format(id))
+            print(count, "Record inserted successfully into people table")
+            time.sleep(3)
+            cursor.close()
 
     except Exception as e:
         print("Failed to insert record into people table", e)
 
-
-    if connection:
-        cursor.close()
-        connection.close()
-        print("PostgreSQL connection is closed")
+    for i in range(TOTAL):
+        if conn[i]:
+            conn[i].close()
+            print("PostgreSQL connection is closed")
 
 
 def selectTable():
@@ -46,7 +76,7 @@ def selectTable():
 
     try:
         cursor = connection.cursor()
-        postgres_select_query = "SELECT * FROM people ORDER BY id desc LIMIT 50"
+        postgres_select_query = "SELECT * FROM people ORDER BY id desc LIMIT {}".format(TOTAL)
         cursor.execute(postgres_select_query)
         people_records = cursor.fetchall()
         for p in people_records:
@@ -63,28 +93,7 @@ def selectTable():
 
 def main():
 
-    numbers = ["0","1","2","3","4","5","6","7","8","9"]
-    mf = ["M","F"]
-
-    # INSERTS
-    for i in range(0,50):
-        gender = random.choice(mf)
-        if gender == "F":
-            fullname = names.get_full_name(gender='female')
-        else:
-            fullname = names.get_full_name(gender='male')
-
-        phone = ''.join(random.choice(numbers) for i in range(10))
-        age = random.randint(15, 98)
-
-        person = {
-            "fullname": fullname,
-            "gender": gender,
-            "phone": phone,
-            "age": age
-        }
-
-        insertTable(person)
+    insertTable()
 
     # SELECT
     selectTable()

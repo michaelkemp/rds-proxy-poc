@@ -44,3 +44,7 @@ variable "desired_count" {
 variable "rds_security_group" {
   type = string
 }
+
+variable "schedule" {
+  type = string
+}
