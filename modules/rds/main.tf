@@ -47,6 +47,13 @@ resource "aws_security_group" "rds-security-group" {
     security_groups = [var.ec2_security_group_id]
     description     = "Access from Bastion Security Group"
   }
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "TCP"
+    self        = true
+    description = "Self Referencing"
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -92,25 +99,26 @@ output "rdsSecurityGroup" {
 
 ###################################### RDS PROXY ###########################################
 resource "aws_secretsmanager_secret" "secrets-manager" {
-  name = "kempy/rds"
+  provider = aws.region
+  name     = "kempy/rds2"
 }
 
 resource "aws_secretsmanager_secret_version" "example" {
-  secret_id     = aws_secretsmanager_secret.secrets-manager.id
-  secret_string = <<-EOF
-    {
-      "username": "${replace(var.name, "-", "")}",
-      "password": "${data.aws_ssm_parameter.dbpwd.value}",
-      "engine": "postgres",
-      "host": "${aws_db_instance.rds.address}",
-      "port": ${aws_db_instance.rds.port},
-      "dbname": "${replace(var.name, "-", "")}"
-      "dbInstanceIdentifier": "${aws_db_instance.rds.identifier}"
-    }
-  EOF
+  provider  = aws.region
+  secret_id = aws_secretsmanager_secret.secrets-manager.id
+  secret_string = jsonencode({
+    "username"             = replace(var.name, "-", "")
+    "password"             = data.aws_ssm_parameter.dbpwd.value
+    "engine"               = "postgres"
+    "host"                 = aws_db_instance.rds.address
+    "port"                 = aws_db_instance.rds.port
+    "dbname"               = replace(var.name, "-", "")
+    "dbInstanceIdentifier" = aws_db_instance.rds.identifier
+  })
 }
 
 resource "aws_db_proxy" "proxy" {
+  provider               = aws.region
   name                   = "${var.name}-proxy"
   debug_logging          = false
   engine_family          = "POSTGRESQL"
@@ -128,7 +136,12 @@ resource "aws_db_proxy" "proxy" {
   }
 }
 
+output "psqlProxyEndpoint" {
+  value = aws_db_proxy.proxy.endpoint
+}
+
 resource "aws_db_proxy_default_target_group" "target_group" {
+  provider      = aws.region
   db_proxy_name = aws_db_proxy.proxy.name
   connection_pool_config {
     connection_borrow_timeout    = 120
@@ -138,6 +151,7 @@ resource "aws_db_proxy_default_target_group" "target_group" {
 }
 
 resource "aws_db_proxy_target" "target" {
+  provider               = aws.region
   db_instance_identifier = aws_db_instance.rds.id
   db_proxy_name          = aws_db_proxy.proxy.name
   target_group_name      = aws_db_proxy_default_target_group.target_group.name
@@ -158,15 +172,25 @@ resource "aws_iam_role" "kempy-rds-proxy-role" {
     }
   EOF
   inline_policy {
-    name   = "kempy-fargate-role-policy"
+    name   = "kempy-rds-proxy-role-policy"
     policy = <<-EOF
       {
         "Version": "2012-10-17",
         "Statement": [
           {
+            "Sid": "",
+            "Action": [
+              "rds:*"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+              "${aws_db_instance.rds.arn}"
+            ]
+          },
+          {
             "Sid": "GetSecretValue",
             "Action": [
-              "secretsmanager:GetSecretValue"
+              "secretsmanager:*"
             ],
             "Effect": "Allow",
             "Resource": [
@@ -180,13 +204,8 @@ resource "aws_iam_role" "kempy-rds-proxy-role" {
             ],
             "Effect": "Allow",
             "Resource": [
-              "arn:aws:kms:us-west-2:847068433460:key/727ee28f-ed78-4b3c-9e95-acbf04a4458b"
-            ],
-            "Condition": {
-              "StringEquals": {
-                "kms:ViaService": "secretsmanager.us-west-2.amazonaws.com"
-              }
-            }
+              "*"
+            ]
           }
         ]
       }    

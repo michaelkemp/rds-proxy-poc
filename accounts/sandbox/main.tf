@@ -77,6 +77,8 @@ output "connect" {
     ssh -i ${local.key_name} ec2-user@${module.bastion-oregon.public_ip}
     # Tunnel to Postgres RDS
     ssh -i ${local.key_name} ec2-user@${module.bastion-oregon.public_ip} -N -L 15432:${module.rds-oregon.psqlEndpoint}:5432
+    # Tunnel to Proxy RDS
+    ssh -i ${local.key_name} ec2-user@${module.bastion-oregon.public_ip} -N -L 15432:${module.rds-oregon.psqlProxyEndpoint}:5432
   EOF
 }
 

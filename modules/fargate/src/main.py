@@ -16,8 +16,8 @@ except:
     DBHOST = "127.0.0.1"
     DBPORT = "15432"
     DBNAME = "testdb"
-    DBUSER = "testuser"
-    DBPASS = "bGkaWq8ycveAg3vF"
+    DBUSER = "kempypsql"
+    DBPASS = "wtyhJjW0zwKnYgw9"
 
 def insertTable():
     conn = []
